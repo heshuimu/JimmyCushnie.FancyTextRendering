@@ -1,4 +1,4 @@
-﻿using JimmysUnityUtilities;
+using JimmysUnityUtilities;
 using System;
 using TMPro;
 using UnityEngine;
@@ -10,7 +10,7 @@ namespace LogicUI.FancyTextRendering
     /// Allows links in TextMeshPro text objects to be clicked on, and gives them custom colors when they are hovered or clicked.
     /// </summary>
     [RequireComponent(typeof(TMP_Text))]
-    public class TextLinkHelper : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IPointerUpHandler, IPointerEnterHandler, IPointerExitHandler
+    public class TextLinkHelper : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IPointerUpHandler, IPointerEnterHandler, IPointerExitHandler, IPointerMoveHandler
     {
         private TMP_Text _Text;
         public TMP_Text Text
@@ -35,6 +35,7 @@ namespace LogicUI.FancyTextRendering
 
             // I'm not sure why the frame delay is necessary, but it is.
             // I suspect that TMP changes the colors in LateUpdate or something
+            Dispatcher.EnsureInitialized();
             CoroutineUtility.RunAfterOneFrame(SetAllLinksToNormalColor);
         }
 
@@ -42,8 +43,7 @@ namespace LogicUI.FancyTextRendering
         {
             HoverEnded();
         }
-
-
+        
         [ColorUsage(showAlpha: false), SerializeField]
         Color32 LinkNormalColor = new Color32(29, 124, 234, 255);
 
@@ -67,8 +67,7 @@ namespace LogicUI.FancyTextRendering
             previouslyHoveredLinkIndex = -1;
             SetAllLinksToNormalColor();
         }
-
-
+        
         public event Action<string> OnLinkClicked;
 
         void IPointerClickHandler.OnPointerClick(PointerEventData eventData)
@@ -80,9 +79,7 @@ namespace LogicUI.FancyTextRendering
                 OnLinkClicked?.Invoke(link.GetLinkID());
             }
         }
-
-
-
+        
         void IPointerDownHandler.OnPointerDown(PointerEventData eventData)
         {
             PointerIsDown = true;
@@ -93,7 +90,7 @@ namespace LogicUI.FancyTextRendering
         {
             PointerIsDown = false;
             SetLinkToColor(previouslyHoveredLinkIndex, LinkNormalColor);
-            previouslyHoveredLinkIndex = -1; // Reset the link hovered caching so that in Update() it's set back to the hovered color
+            previouslyHoveredLinkIndex = -1; // Reset the link hovered caching so that it's set back to the hovered color in the move event
         }
 
         void IPointerEnterHandler.OnPointerEnter(PointerEventData eventData)
@@ -115,7 +112,8 @@ namespace LogicUI.FancyTextRendering
 
         bool CurrentlyHoveredOver;
         bool PointerIsDown;
-        void Update()
+        
+        public void OnPointerMove(PointerEventData eventData)
         {
             if (!CurrentlyHoveredOver)
                 return;
@@ -124,7 +122,7 @@ namespace LogicUI.FancyTextRendering
                 return;
 
 
-            int linkIndex = TMP_TextUtilities.FindIntersectingLink(Text, Input.mousePosition, cachedCamera);
+            int linkIndex = TMP_TextUtilities.FindIntersectingLink(Text, eventData.position, cachedCamera);
             if (linkIndex < 0)
                 HoverEnded();
             else
